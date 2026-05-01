@@ -3,26 +3,24 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
 local VirtualUser = game:GetService("VirtualUser")
-local Lighting = game:GetService("Lighting")
 
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
---// CONFIGURACIÓN GLOBAL
+--// CONFIGURACIÓN GLOBAL (Limpia)
 local config = {
 	ShiftLock = false,
 	AutoClick = false,
-	KillAura = false,
-	AuraRange = 18,
-	FullBright = false,
-	WallClimb = false,
 	HitboxEnabled = false,
 	HitboxSize = 10,
 	HighlightESP = false,
 	NoClip = false,
 	InfJump = false,
-	Offset = Vector3.new(1.7, 0.5, 0) -- El desplazamiento lateral del Shift Lock
+	DynamicPOV = false,
+	Offset = Vector3.new(1.7, 0.5, 0)
 }
+
+local baseFOV = camera.FieldOfView
 
 local COLORS = {
 	Bg = Color3.fromRGB(10, 10, 10),
@@ -50,7 +48,7 @@ UIS.InputEnded:Connect(function() dragging = false end)
 
 --// PANEL PRINCIPAL
 local menu = Instance.new("Frame", openBtn)
-menu.Size = UDim2.new(0, 320, 0, 480); menu.Position = UDim2.new(1, 20, 0, 0); menu.BackgroundColor3 = COLORS.Bg; menu.Visible = false; menu.Active = true; menu.ClipsDescendants = true
+menu.Size = UDim2.new(0, 320, 0, 420); menu.Position = UDim2.new(1, 20, 0, 0); menu.BackgroundColor3 = COLORS.Bg; menu.Visible = false; menu.Active = true; menu.ClipsDescendants = true
 Instance.new("UICorner", menu).CornerRadius = UDim.new(0, 15); Instance.new("UIStroke", menu).Color = COLORS.Stroke
 
 local scroll = Instance.new("ScrollingFrame", menu)
@@ -67,141 +65,112 @@ end
 
 --// ELEMENTOS DEL MENÚ
 local autoBtn = createBtn(scroll, "AUTO CLICKER: OFF", 1)
-local kuraBtn = createBtn(scroll, "KILL AURA: OFF", 2)
-local hitboxBtn = createBtn(scroll, "HITBOX EXPANDER: OFF", 3)
+local hitboxBtn = createBtn(scroll, "HITBOX EXPANDER: OFF", 2)
 
-local hbContainer = Instance.new("Frame", scroll); hbContainer.Size = UDim2.new(0.9, 0, 0, 45); hbContainer.BackgroundTransparency = 1; hbContainer.LayoutOrder = 4
+local hbContainer = Instance.new("Frame", scroll); hbContainer.Size = UDim2.new(0.9, 0, 0, 45); hbContainer.BackgroundTransparency = 1; hbContainer.LayoutOrder = 3
 local hbLabel = Instance.new("TextLabel", hbContainer); hbLabel.Size = UDim2.new(1, 0, 0, 20); hbLabel.Text = "TAMAÑO HITBOX: 10"; hbLabel.Font = Enum.Font.GothamBold; hbLabel.TextColor3 = COLORS.TextDark; hbLabel.BackgroundTransparency = 1; hbLabel.TextSize = 11
 local hbBack = Instance.new("Frame", hbContainer); hbBack.Size = UDim2.new(1, 0, 0, 6); hbBack.Position = UDim2.new(0, 0, 0.8, 0); hbBack.BackgroundColor3 = Color3.fromRGB(35, 35, 35); Instance.new("UICorner", hbBack)
 local hbFill = Instance.new("Frame", hbBack); hbFill.Size = UDim2.new(0.3, 0, 1, 0); hbFill.BackgroundColor3 = COLORS.Accent; Instance.new("UICorner", hbFill)
 
-local espBtn = createBtn(scroll, "MARCAR ENEMIGOS: OFF", 5)
+local espBtn = createBtn(scroll, "MARCAR ENEMIGOS: OFF", 4)
+local povBtn = createBtn(scroll, "POV DINÁMICO: OFF", 5)
 local jumpBtn = createBtn(scroll, "INFINITE JUMP: OFF", 6)
 local noclipBtn = createBtn(scroll, "NOCLIP: OFF", 7)
-local climbBtn = createBtn(scroll, "AUTO WALL-CLIMB: OFF", 8)
-local brightBtn = createBtn(scroll, "VISIÓN NOCTURNA: OFF", 9)
 
--- LÓGICA DE INTERFACES
+-- LÓGICA DE BOTONES
 autoBtn.MouseButton1Click:Connect(function() config.AutoClick = not config.AutoClick autoBtn.Text = "AUTO CLICKER: " .. (config.AutoClick and "ON" or "OFF") autoBtn.BackgroundColor3 = config.AutoClick and COLORS.BtnOn or COLORS.BtnOff end)
-kuraBtn.MouseButton1Click:Connect(function() config.KillAura = not config.KillAura kuraBtn.Text = "KILL AURA: " .. (config.KillAura and "ON" or "OFF") kuraBtn.BackgroundColor3 = config.KillAura and COLORS.BtnOn or COLORS.BtnOff end)
 hitboxBtn.MouseButton1Click:Connect(function() config.HitboxEnabled = not config.HitboxEnabled hitboxBtn.Text = "HITBOX EXPANDER: " .. (config.HitboxEnabled and "ON" or "OFF") hitboxBtn.BackgroundColor3 = config.HitboxEnabled and COLORS.BtnOn or COLORS.BtnOff end)
 espBtn.MouseButton1Click:Connect(function() config.HighlightESP = not config.HighlightESP espBtn.Text = "MARCAR ENEMIGOS: " .. (config.HighlightESP and "ON" or "OFF") espBtn.BackgroundColor3 = config.HighlightESP and COLORS.BtnOn or COLORS.BtnOff end)
+povBtn.MouseButton1Click:Connect(function() config.DynamicPOV = not config.DynamicPOV povBtn.Text = "POV DINÁMICO: " .. (config.DynamicPOV and "ON" or "OFF") povBtn.BackgroundColor3 = config.DynamicPOV and COLORS.BtnOn or COLORS.BtnOff end)
 jumpBtn.MouseButton1Click:Connect(function() config.InfJump = not config.InfJump jumpBtn.Text = "INFINITE JUMP: " .. (config.InfJump and "ON" or "OFF") jumpBtn.BackgroundColor3 = config.InfJump and COLORS.BtnOn or COLORS.BtnOff end)
 noclipBtn.MouseButton1Click:Connect(function() config.NoClip = not config.NoClip noclipBtn.Text = "NOCLIP: " .. (config.NoClip and "ON" or "OFF") noclipBtn.BackgroundColor3 = config.NoClip and COLORS.BtnOn or COLORS.BtnOff end)
-climbBtn.MouseButton1Click:Connect(function() config.WallClimb = not config.WallClimb climbBtn.Text = "AUTO WALL-CLIMB: " .. (config.WallClimb and "ON" or "OFF") climbBtn.BackgroundColor3 = config.WallClimb and COLORS.BtnOn or COLORS.BtnOff end)
-brightBtn.MouseButton1Click:Connect(function() config.FullBright = not config.FullBright brightBtn.Text = "VISIÓN NOCTURNA: " .. (config.FullBright and "ON" or "OFF") brightBtn.BackgroundColor3 = config.FullBright and COLORS.BtnOn or COLORS.BtnOff Lighting.Ambient = config.FullBright and Color3.new(1,1,1) or Color3.fromRGB(127,127,127) end)
 
 hbBack.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then local con; con = UIS.InputChanged:Connect(function(move) if move.UserInputType == Enum.UserInputType.MouseMovement or move.UserInputType == Enum.UserInputType.Touch then local percent = math.clamp((move.Position.X - hbBack.AbsolutePosition.X) / hbBack.AbsoluteSize.X, 0, 1); hbFill.Size = UDim2.new(percent, 0, 1, 0); config.HitboxSize = math.floor(2 + (percent * 38)); hbLabel.Text = "TAMAÑO HITBOX: " .. config.HitboxSize end end) UIS.InputEnded:Connect(function(up) if up.UserInputType == Enum.UserInputType.MouseButton1 or up.UserInputType == Enum.UserInputType.Touch then con:Disconnect() end end) end end)
 
---// SISTEMA SHIFT LOCK (BOTÓN CIRCULAR + CÁMARA)
+--// SISTEMA SHIFT LOCK
 local shiftBtn = Instance.new("ImageButton", gui); shiftBtn.Size = UDim2.new(0, 58, 0, 58); shiftBtn.Position = UDim2.new(1, -277, 1, -90); shiftBtn.BackgroundTransparency = 1; shiftBtn.Image = "rbxasset://textures/ui/mouseLock_off@2x.png"
 local shiftBg = Instance.new("Frame", shiftBtn); shiftBg.Size = UDim2.new(1, 0, 1, 0); shiftBg.ZIndex = 0; shiftBg.BackgroundColor3 = COLORS.Bg; shiftBg.BackgroundTransparency = 0.4; Instance.new("UICorner", shiftBg).CornerRadius = UDim.new(1, 0); Instance.new("UIStroke", shiftBg).Color = COLORS.Stroke
+shiftBtn.MouseButton1Click:Connect(function() config.ShiftLock = not config.ShiftLock shiftBtn.Image = config.ShiftLock and "rbxasset://textures/ui/mouseLock_on@2x.png" or "rbxasset://textures/ui/mouseLock_off@2x.png" end)
 
-shiftBtn.MouseButton1Click:Connect(function() 
-	config.ShiftLock = not config.ShiftLock 
-	shiftBtn.Image = config.ShiftLock and "rbxasset://textures/ui/mouseLock_on@2x.png" or "rbxasset://textures/ui/mouseLock_off@2x.png" 
-end)
-
---// SISTEMA ESP (OPTIMIZADO CADA 0.5s)
+--// SISTEMA ESP
 task.spawn(function()
-	while task.wait(0.5) do
+	while true do
+		task.wait(0.2)
 		for _, p in pairs(Players:GetPlayers()) do
 			if p ~= player and p.Character then
 				local hi = p.Character:FindFirstChild("ESPHighlight")
 				if config.HighlightESP then
 					if not hi then
-						hi = Instance.new("Highlight")
-						hi.Name = "ESPHighlight"
-						hi.FillColor = Color3.fromRGB(255, 0, 0)
-						hi.FillTransparency = 0.5
-						hi.OutlineColor = Color3.new(1, 1, 1)
-						hi.Parent = p.Character
+						hi = Instance.new("Highlight", p.Character)
+						hi.Name = "ESPHighlight"; hi.FillColor = Color3.fromRGB(255, 0, 0); hi.FillTransparency = 0.5; hi.OutlineColor = Color3.new(1, 1, 1)
 					end
 					hi.Enabled = true
-				elseif hi then
-					hi.Enabled = false
-				end
+				elseif hi then hi:Destroy() end
 			end
 		end
 	end
 end)
 
---// BUCLE DE FÍSICA Y MOVIMIENTO (RENDERSTEPPED)
+--// BUCLE PRINCIPAL
 RunService.RenderStepped:Connect(function()
 	local char = player.Character
 	if not char then return end
 	local hum = char:FindFirstChild("Humanoid")
 	local hrp = char:FindFirstChild("HumanoidRootPart")
 
-	-- NoClip ligero
+	-- POV DINÁMICO
+	if hum and hrp then
+		if config.DynamicPOV then
+			local targetFOV = (hum.MoveDirection.Magnitude > 0 or (config.AutoClick and menu.Visible == false)) and baseFOV + 15 or baseFOV
+			camera.FieldOfView = camera.FieldOfView + (targetFOV - camera.FieldOfView) * 0.1
+		else
+			camera.FieldOfView = camera.FieldOfView + (baseFOV - camera.FieldOfView) * 0.1
+		end
+	end
+
+	-- NOCLIP
 	if config.NoClip then
-		if char:FindFirstChild("Head") then char.Head.CanCollide = false end
-		if char:FindFirstChild("UpperTorso") then char.UpperTorso.CanCollide = false end
-		if char:FindFirstChild("LowerTorso") then char.LowerTorso.CanCollide = false end
-		if hrp then hrp.CanCollide = false end
+		for _, part in pairs(char:GetDescendants()) do
+			if part:IsA("BasePart") then part.CanCollide = false end
+		end
 	end
 
-	-- Wall Climb
-	if config.WallClimb and hrp then
-		local ray = Ray.new(hrp.Position, hrp.CFrame.LookVector * 2.5)
-		local hit = workspace:FindPartOnRay(ray, char)
-		if hit and UIS:IsKeyDown(Enum.KeyCode.Space) then hrp.Velocity = Vector3.new(hrp.Velocity.X, 45, hrp.Velocity.Z) end
-	end
-
-	-- Hitbox Expander
+	-- HITBOX
 	if config.HitboxEnabled then
 		for _, p in pairs(Players:GetPlayers()) do
 			if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
 				local ehrp = p.Character.HumanoidRootPart
-				if ehrp.Size.X ~= config.HitboxSize then
-					ehrp.Size = Vector3.new(config.HitboxSize, config.HitboxSize, config.HitboxSize)
-					ehrp.Transparency = 0.8
-					ehrp.CanCollide = false
-				end
+				ehrp.Size = Vector3.new(config.HitboxSize, config.HitboxSize, config.HitboxSize)
+				ehrp.Transparency = 0.8; ehrp.CanCollide = false
 			end
 		end
 	end
 
-	-- SHIFT LOCK LÓGICA
+	-- SHIFT LOCK
 	if config.ShiftLock and hrp and hum then
 		local look = camera.CFrame.LookVector
-		-- Alinea el cuerpo con la cámara
 		hrp.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, math.atan2(-look.X, -look.Z), 0)
-		-- Desplaza la cámara al hombro
-		hum.CameraOffset = config.Offset
-		hum.AutoRotate = false
+		hum.CameraOffset = config.Offset; hum.AutoRotate = false
 	elseif hum then
-		hum.CameraOffset = Vector3.new(0,0,0)
-		hum.AutoRotate = true
+		hum.CameraOffset = Vector3.new(0,0,0); hum.AutoRotate = true
 	end
 end)
 
---// ACCIONES DE USUARIO
+--// ACCIONES
 UIS.JumpRequest:Connect(function() if config.InfJump and player.Character and player.Character:FindFirstChild("Humanoid") then player.Character.Humanoid:ChangeState("Jumping") end end)
 
---// COMBATE AGRESIVO (TASK SEPARADO)
+--// AUTO CLICKER
 task.spawn(function()
 	while true do
-		local char = player.Character
-		local tool = char and char:FindFirstChildOfClass("Tool")
-		if tool and tool.Name == "Katana" then
-			local targetInAura = false
-			if config.KillAura then
-				for _, p in pairs(Players:GetPlayers()) do
-					if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-						if (char.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude <= config.AuraRange then
-							targetInAura = true
-							VirtualUser:CaptureController(); VirtualUser:Button1Down(Vector2.new(0,0))
-							task.wait(0.02); VirtualUser:Button1Up(Vector2.new(0,0))
-						end
-					end
-				end
-			end
-			if not targetInAura and config.AutoClick and menu.Visible == false then
-				VirtualUser:CaptureController(); VirtualUser:Button1Down(Vector2.new(0,0))
-				task.wait(0.05); VirtualUser:Button1Up(Vector2.new(0,0))
+		task.wait(0.1)
+		if config.AutoClick and not menu.Visible then
+			local char = player.Character
+			local tool = char and char:FindFirstChildOfClass("Tool")
+			if tool and tool.Name == "Katana" then
+				VirtualUser:Button1Down(Vector2.new(0,0))
+				task.wait(0.02)
+				VirtualUser:Button1Up(Vector2.new(0,0))
 			end
 		end
-		task.wait(0.08)
 	end
 end)
